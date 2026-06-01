@@ -37,10 +37,10 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
 
-        if return_features:
-            return x
-
         logits = self.outc(x)
+
+        if return_features:
+            return x, logits
 
         return logits
 
@@ -55,4 +55,3 @@ class UNet(nn.Module):
         self.up3 = torch.utils.checkpoint(self.up3)
         self.up4 = torch.utils.checkpoint(self.up4)
         self.outc = torch.utils.checkpoint(self.outc)
-
