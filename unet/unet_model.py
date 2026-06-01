@@ -31,13 +31,15 @@ class UNet(nn.Module):
         x5 = self.down4(x4)
 
         # This is explicitly added so that we can extract features for domain Selecter
-        if return_features:
-            return x5
 
         x = self.up1(x5, x4)
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
+
+        if return_features:
+            return x
+
         logits = self.outc(x)
 
         return logits
@@ -54,30 +56,3 @@ class UNet(nn.Module):
         self.up4 = torch.utils.checkpoint(self.up4)
         self.outc = torch.utils.checkpoint(self.outc)
 
-    @staticmethod
-    def features_extraction(src_batch,
-                            target_batch,
-                            model,
-                            device,
-                            amp,
-                            return_features=True):
-        """
-            The feature extraction function should take the following arg as the input:
-            a. batch -> it should be target, source
-        """
-
-        src_images, target_images = src_batch['image'], target_batch['image']
-
-        src_images = src_images.to(
-            device=device, dtype=torch.float32, memory_format=torch.channels_last)
-        target_images = target_images.to(
-            device=device, dtype=torch.float32, memory_format=torch.channels_last)
-
-        with torch.no_grad():
-            with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
-                features_src = model(
-                    src_images, return_features=return_features)
-                features_target = model(
-                    target_images, return_features=return_features)
-
-        return features_src, features_target
