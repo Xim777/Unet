@@ -23,7 +23,7 @@ def load_image(filename):
 
 
 def unique_mask_values(idx, mask_dir, mask_suffix):
-    mask_file = list(mask_dir.glob(idx + mask_suffix + '.*'))[0]
+    mask_file = list(mask_dir.glob(idx + mask_suffix + '.tif'))[0]
     mask = np.asarray(load_image(mask_file))
     if mask.ndim == 2:
         return np.unique(mask)
@@ -48,13 +48,19 @@ class BasicDataset(Dataset):
         self.scale = scale
         self.mask_suffix = mask_suffix
 
-        self.ids = [splitext(file)[0] for file in listdir(images_dir) if isfile(join(images_dir, file)) and not file.startswith('.')]
+        self.ids = [
+            splitext(file)[0]
+            for file in listdir(images_dir)
+            if isfile(join(images_dir, file))
+            and file.lower().endswith(('.tif', '.tiff'))
+        ]
+
         if not self.ids:
             raise RuntimeError(f'No input file found in {images_dir}, make sure you put your images there')
 
         logging.info(f'Creating dataset with {len(self.ids)} examples')
         logging.info('Scanning mask files to determine unique values')
-        with Pool() as p:
+        with Pool(1) as p:
             unique = list(tqdm(
                 p.imap(partial(unique_mask_values, mask_dir=self.mask_dir, mask_suffix=self.mask_suffix), self.ids),
                 total=len(self.ids),
@@ -99,8 +105,8 @@ class BasicDataset(Dataset):
 
     def __getitem__(self, idx):
         name = self.ids[idx]
-        mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.*'))
-        img_file = list(self.images_dir.glob(name + '.*'))
+        mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.tif'))
+        img_file = list(self.images_dir.glob(name + '.tif'))
 
         assert len(img_file) == 1, f'Either no image or multiple images found for the ID {name}: {img_file}'
         assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {name}: {mask_file}'
@@ -124,7 +130,13 @@ class TargetDataset(Dataset):
         assert 0 < scale <= 1, 'Scale must be between 0 and 1'
         self.scale = scale
 
-        self.ids = [splitext(file)[0] for file in listdir(images_dir) if isfile(join(images_dir, file)) and not file.startswith('.')]
+        self.ids = [
+            splitext(file)[0]
+            for file in listdir(images_dir)
+            if isfile(join(images_dir, file))
+            and file.lower().endswith(('.tif', '.tiff'))
+        ]
+
         if not self.ids:
             raise RuntimeError(f'No input file found in {images_dir}, make sure you put your images there')
 
@@ -152,7 +164,7 @@ class TargetDataset(Dataset):
 
     def __getitem__(self, idx):
         name = self.ids[idx]
-        img_file = list(self.images_dir.glob(name + '.*'))
+        img_file = list(self.images_dir.glob(name + '.tif'))
 
         assert len(img_file) == 1, f'Either no image or multiple images found for the ID {name}: {img_file}'
         img = load_image(img_file[0])
